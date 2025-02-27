@@ -1,7 +1,4 @@
 # Procedure.py
-# 
-# Created:  Mar 2016, M. Vegh
-# Modified: Aug 2017, E. Botero
 
 # ----------------------------------------------------------------------        
 #   Imports
@@ -12,6 +9,7 @@ import numpy as np
 import SUAVE
 from SUAVE.Core import Units, Data
 from SUAVE.Analyses.Process import Process
+from SUAVE.Methods.Performance.estimate_take_off_field_length import estimate_take_off_field_length
 from SUAVE.Methods.Propulsion.turbofan_sizing import turbofan_sizing
 from SUAVE.Methods.Geometry.Two_Dimensional.Cross_Section.Propulsion.compute_turbofan_geometry import compute_turbofan_geometry
 #from SUAVE.Methods.Center_of_Gravity.compute_component_centers_of_gravity import compute_component_centers_of_gravity
@@ -195,13 +193,143 @@ def post_process(nexus):
             
     summary.max_throttle = max_throttle
 
-    eta_p = 0.8
-    L_D = 11
-    C_power = 0.00019
-    W_2 = 1375. * Units.kilogram
-    W_3 = 1175. * Units.kilogram
+    ##########################################################################
+                                # RANGE EVALUATION 
+    ##########################################################################
+    # Geometry unpacking
+    MAC                      = vehicle.wings.main_wing.chords.mean_aerodynamic 
+    AR                       = vehicle.wings.main_wing.aspect_ratio
+    S_ref                    = vehicle.reference_area
+    chord_root               = vehicle.wings.main_wing.chords.root
+    span                     = vehicle.wings.main_wing.spans.projected
+    taper                    = vehicle.wings.main_wing.taper
 
-    RANGE_VALUE         = eta_p * L_D / C_power * np.log(W_2 / W_3) / 9.81     
+
+    # Mass unpacking
+    GTOW                     = vehicle.mass_properties.takeoff
+    W_0                      = GTOW
+    Empty_weight             = vehicle.mass_properties.operating_empty #empty weight  
+    design_takeoff_weight    = GTOW
+    # Fuel_mass_total          = vehicle.fuel.mass_properties.mass 
+    Fuel_mass_total          = 237 * Units.kg
+    
+
+    # payload                  = vehicle.passenger_weights.mass_properties.mass # number of passenger \times 225pounds = nmber*102kg
+    zero_fuel_weight         = GTOW - Fuel_mass_total
+    wing_weight              = vehicle.weight_breakdown.wing
+    final_weight_real        = results.base.segments[-1].conditions.weights.total_mass[-1]
+    W_4                      = zero_fuel_weight                                #Weight at the final of mission; It must be equal to design_landing_weight
+    
+    
+    Massa_breakdown          = vehicle.weight_breakdown
+    
+    # Weight ratios over the mission
+    W1_W0                    = 0.97                                            # Warmup and takeoff fuel consumption
+    W2_W1                    = 0.985                                           # Climb fuel consumption
+    W4_W3                    = 0.995                                           # Descent fuel consumption
+    
+    
+    # Weights evaluation
+    # W_0 = 1406.136347
+    # W_3                       = W_4 / W4_W3                                  # Final cruise weight
+    W_2                       = W1_W0 * W2_W1 * W_0                            # Initial cruise weight
+    Fuel_mass_cruise          = 168. * Units.kg                                # Fuel during cruise = Cessna 182 original
+    W_3                       = W_2 - Fuel_mass_cruise
+    # W_3                       = 1175.011
+    
+
+
+    #Atmosphere evaluation at 5500 m
+    altitude_5500 = 5500 * Units.m  
+    # altitude_5500 = 0 * Units.m  
+    atmosphere  = SUAVE.Analyses.Atmospheric.US_Standard_1976()
+    freestream_5500  = atmosphere.compute_values(altitude_5500)
+    
+    
+    
+    #now add to freestream data object
+    freestream_5500.gravity     = 9.81
+    rho_5500 = freestream_5500.density[0,0]
+    mu_5500 = freestream_5500.dynamic_viscosity[0,0]
+    a_5500 = freestream_5500.speed_of_sound[0,0]
+    
+    
+    
+    # CD0 evaluation
+    V_estimated = 110 * Units.knot #An estimation for a first iteration of CD0
+    Rey_estimated = rho_5500*MAC*V_estimated/mu_5500
+    Mach_number = V_estimated/a_5500
+
+    
+    for segment in results.base.segments.values():
+        drag_breakdown = segment.conditions.aerodynamics.drag_breakdown
+        e_factor =  drag_breakdown.induced.efficiency_factor[0,0] #updated oswald efficiency factor
+        
+    K = 1/(np.pi*AR*e_factor)
+
+    ref_condition                   = Data()
+    ref_condition.mach_number       = Mach_number
+    ref_condition.reynolds_number   = Rey_estimated 
+
+    # cruise_configs  = vehicle.cruise
+    cruise_configs  = nexus.vehicle_configurations.cruise
+    
+    analyses_CD0 = Data()
+    analyses_CD0.configs = Data()
+    analyses_CD0.configs.cruise = Data()
+    analyses_CD0.configs.cruise = analyses.cruise
+    CD0             = print_parasite_drag(ref_condition, cruise_configs, analyses_CD0,'C182_drag.dat' )
+
+
+    #CL_ideal and Vel_ideal evaluation    
+    CL_ideal    = np.sqrt(CD0/K)                                               # CL for best L/D
+    V_ideal     = np.sqrt(2*W_2*9.81/(rho_5500*S_ref*CL_ideal))                     # Vel for best L/D
+    
+    
+    # print('\n\n CD0 LOOP \n\n')
+    for i in range(5):
+        Rey_estimated = rho_5500*MAC*V_ideal/mu_5500
+        Mach_number = V_ideal/a_5500
+        ref_condition.mach_number       = Mach_number
+        ref_condition.reynolds_number   = Rey_estimated 
+        CD0 = print_parasite_drag(ref_condition, cruise_configs, analyses_CD0,'C182_drag.dat' )
+        CL_ideal    = np.sqrt(CD0/K)                                               # CL for best L/D
+        V_ideal     = np.sqrt(2*W_2*9.81/(rho_5500*S_ref*CL_ideal))                     # Vel for best L/D
+        print('CD0', CD0)
+        # print('CL_ideal', CL_ideal)
+        # print('V_ideal', V_ideal)
+        
+    
+    
+    
+    print('Rey_estimated', Rey_estimated)
+    
+    # Total drag evaluation
+    CD_i        = K*CL_ideal**2
+    CD_total    = CD_i + CD0
+    L_D         = CL_ideal / CD_total
+    
+    
+    D           = 1/2 * rho_5500 * V_ideal**2 * S_ref * CD_total               # Drag during the cruise
+    
+    
+    # Power required and provided
+    D_V         = D * V_ideal                                                  # Thrust power produced
+    
+    eta_p       = 0.80                                                         # Propeller efficiency (Raymer)
+    P_provided  = D_V / eta_p                                                  # Power provided to the propeller
+    Pbhp        = P_provided * 0.00134102                                      # Power provided, break horse power unit
+    
+    
+    # Fuel consumption value (from Lycoming chart)
+    Fuel_density        = 6.01                                                 # Avgas density [lb / u.s. gal]
+    Fuel_consumption    = -0.00002 * Pbhp**2 + 0.0656 * Pbhp  + 3.8099         # Fuel consumption [u.s. gal / hr]
+    C_bhp               = Fuel_consumption * Fuel_density / Pbhp               # Cbhp [lb/hr/bhp]
+    C_power             = C_bhp * 0.453592 / 3600 / 745.7                      # Conversion from Cbhp to SI [kg/W-s]
+    
+    
+    
+    RANGE_VALUE         = eta_p * L_D / C_power * np.log(W_2 / W_3) / 9.81     # Range with 168 kg mass of fuel
     Range_objective = 1/RANGE_VALUE      
 
 
@@ -209,6 +337,87 @@ def post_process(nexus):
     print('----------------------------------------------')
     print('RANGE VALUE', RANGE_VALUE/Units.km)
     print('\n') 
+
+    print('span', span)
+    print('chord_root', chord_root)
+    print('taper', taper)
+    print('Empty_weight', Empty_weight)
+    print('CD0', CD0)
+    print('Oswald factor e', e_factor)
+    
+    
+    print('\n')
+    
+    
+    
+    print('Sref', S_ref)
+    print('AR', AR)
+
+    print('\n')
+
+
+    print('W_0', W_0)
+    print('W_2', W_2)
+    print('W_3', W_3)
+    print('W_2 / W_3',  W_2 / W_3 )
+
+    print('\n')
+
+
+
+    print('CL_ideal', CL_ideal)
+    print('CD_total', CD_total)
+    print('L_D', L_D)
+
+    print('\n')
+
+
+    print('C_bhp', C_bhp)
+    print('C_power', C_power)
+
+    # print('k', K)
+    print('V_ideal', V_ideal / Units.knot)
+    print('D ', D )
+    print('D_V', D_V )
+    print('P_provided', P_provided )
+    print('Pbhp', Pbhp )
+    
+
+    # print('rho', rho_5500 )
+    # print('Fuel_consumption', Fuel_consumption )
+    print('Mach_number', Mach_number )
+    # print('Sound speed', a_5500 / Units.knot )
+    print('\n\n')
+    
+    
+    ##########################################################################
+                                # FULL MISSION REAL VALUE
+    ##########################################################################
+    Real_fuelburn                = design_takeoff_weight - results.base.segments['cruise'].conditions.weights.total_mass[-1] #Fuel burn
+
+     
+    final_weight = results.base.segments['cruise'].conditions.weights.total_mass[-1]
+    # print('final_weight Real = ', final_weight)
+
+
+    # TAKEOFF DISTANCE SETTING:
+    Analyses_opt = SUAVE.Analyses.Analysis.Container()
+    Analyses_opt.base = nexus.analyses.base
+    Analyses_opt.missions = nexus.missions              #Esse esta OK
+
+
+    # print('\n')
+    engine_type = 'propeller'
+    takeoff_dist =  estimate_take_off_field_length(vehicle, Analyses_opt, missions.airport, engine_type)
+    # print('TAKEOFF dist = ', takeoff_dist)
+    
+    #parametrizacao da constraint:
+    length_desired = 600. *Units.m
+    takeoff_constraint = takeoff_dist - length_desired
+
+
+
+    base_mission_fuelburn = Real_fuelburn
 
     ##########################################################################
                                 # CONSTRAINTS
