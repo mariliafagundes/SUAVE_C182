@@ -1,8 +1,4 @@
 # Procedure.py
-# 
-# Created:  Mar 2016, M. Vegh
-# Modified: Aug 2017, E. Botero
-#           May 2020, J. Garcia
 
 # ----------------------------------------------------------------------        
 #   Imports
