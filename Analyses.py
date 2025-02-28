@@ -5,9 +5,6 @@
 # ----------------------------------------------------------------------    
 
 import SUAVE
-from SUAVE.Core import Units
-
-import numpy as np
 
 # ----------------------------------------------------------------------        
 #   Setup Analyses
@@ -19,10 +16,12 @@ def setup(configs):
 
     # build a base analysis for each config
     for tag,config in configs.items():
-        analysis = base(config)   
+        analysis = base(config)
+#        if tag == 'cruise_spoilers':
+#            # this is done since drag is not sufficient for the desired profile
+#            analysis.aerodynamics.settings.spoiler_drag_increment = 0.005       
         analyses[tag] = analysis
-
-
+    # print('ANALYSES_TESTE', analyses.cruise.aerodynamics)
     return analyses
 
 # ----------------------------------------------------------------------        
@@ -44,19 +43,17 @@ def base(vehicle):
 
     # ------------------------------------------------------------------
     #  Weights
-    weights = SUAVE.Analyses.Weights.Weights_Transport()
+    weights = SUAVE.Analyses.Weights.Weights_Tube_Wing()
     weights.vehicle = vehicle
+    weights.ac_exception = 'cessna'     #IT MUST BE CALLED WHEN I DESIRE WING WEIGHT EVALUATION USING THE RAYMER METHOD
     analyses.append(weights)
 
     # ------------------------------------------------------------------
     #  Aerodynamics Analysis
     aerodynamics = SUAVE.Analyses.Aerodynamics.Fidelity_Zero()
     aerodynamics.geometry = vehicle
-    # aerodynamics.settings.number_spanwise_vortices  = 5 
-    # aerodynamics.settings.number_chordwise_vortices = 1
-    # aerodynamics.process.compute.lift.inviscid_wings.training.angle_of_attack = np.array([[-5., 0.0, 5.0, 10.0, 75.]]).T * Units.deg 
-    # aerodynamics.process.compute.lift.inviscid_wings.training.Mach            = np.array([[0.0, 0.2, 0.5, 0.70, 0.80, 0.9, 1.3, 1.35, 1.5, 2.0]]).T         
     analyses.append(aerodynamics)
+
 
     # ------------------------------------------------------------------
     #  Stability Analysis
@@ -67,7 +64,7 @@ def base(vehicle):
     # ------------------------------------------------------------------
     #  Energy
     energy= SUAVE.Analyses.Energy.Energy()
-    energy.network = vehicle.networks
+    energy.network = vehicle.propulsors
     analyses.append(energy)
 
     # ------------------------------------------------------------------
