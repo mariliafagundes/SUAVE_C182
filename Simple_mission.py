@@ -268,7 +268,7 @@ def vehicle_setup():
     fuel.origin                                 = wing.origin
     fuel.internal_volume                        = fuel.mass_properties.mass/fuel.density #all of the fuel volume is internal
     fuel.mass_properties.center_of_gravity      = wing.mass_properties.center_of_gravity
-    fuel.mass_properties.mass                   = 522 *Units.lbs
+    fuel.mass_properties.mass                   = 621 *Units.lbs
     vehicle.fuel                                = fuel
 
     # ------------------------------------------------------------------
@@ -282,7 +282,7 @@ def vehicle_setup():
     net.nacelle_diameter                        = 42 * Units.inches
     net.engine_length                           = 0.01 * Units.inches
     net.areas                                   = Data()
-    net.rated_speed                             = 2000. * Units.rpm
+    net.rated_speed                             = 2400. * Units.rpm
     net.rated_power                             = 230.  * Units.hp
     net.areas.wetted                            = 0.01
     # net = propeller_design(net)
@@ -311,7 +311,7 @@ def vehicle_setup():
     net.engine.sea_level_power                  = 230. * Units.horsepower   
     net.engine.flat_rate_altitude               = 0.0
     net.engine.speed                            = 2400. * Units.rpm       
-    net.engine.power_specific_fuel_consumption  = 0.35 #lb/h-hp (inside Internal Combustion Engine, it will be converted)
+    net.engine.power_specific_fuel_consumption  = 0.65 #lb/h-hp (inside Internal Combustion Engine, it will be converted)
     
     
     # add the network to the vehicle
@@ -368,11 +368,9 @@ def mission_setup(analyses,vehicle):
     segment.planet         = planet
 
     segment.altitude_start = 0.0
-    segment.throttle       = 1.0
     segment.altitude_end   = 800.0 * Units.ft
     segment.air_speed      = 70.0 * Units.knots
-    aux_1 = np.arctan(1/6) 
-    segment.climb_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.climb_rate = 6.0 *Units.knots
     print('first climb segment',segment.climb_rate)
 
     # add to misison
@@ -394,11 +392,9 @@ def mission_setup(analyses,vehicle):
     segment.planet         = planet
 
     segment.altitude_start = 800.0 * Units.ft
-    segment.throttle       = 1.0
     segment.altitude_end   = 3000. * Units.ft
     segment.air_speed      = 80.0 * Units.knots
-    aux_1 = np.arctan(1/7) 
-    segment.climb_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.climb_rate = 5.5 *Units.knots
     print('second climb segment',segment.climb_rate)
 
 
@@ -421,38 +417,11 @@ def mission_setup(analyses,vehicle):
 
     segment.throttle       = 1.0
     segment.altitude_start = 3000.0 * Units.ft
-    segment.altitude_end   = 4000.0 * Units.ft    
-    segment.air_speed      = 90.0 * Units.knots
-    aux_1 = np.arctan(1/9) 
-    segment.climb_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.altitude_end   = 8000.0 * Units.ft    
+    segment.air_speed      = 100.0 * Units.knots
+    segment.climb_rate = 4.0 *Units.knots
     print('third climb segment',segment.climb_rate)
     #segment.climb_rate =  9.0 * Units.knots
-
-
-    # add to misison
-    mission.append_segment(segment)
-
-    #------------------------------------------------------------------
-    #  Fourth Climb Segment: Constant Speed, Constant Throttle
-    #------------------------------------------------------------------
-
-    segment = Segments.Climb.Constant_Speed_Constant_Rate()
-    segment.tag = "climb_4"
-
-    # connect vehicle configuration
-    segment.analyses.extend( analyses )
-
-    # define segment attributes
-    segment.atmosphere     = atmosphere
-    segment.planet         = planet
-
-    segment.throttle       = 1.0
-    segment.altitude_start = 4000.0 * Units.ft
-    segment.altitude_end   = 13000.0 * Units.ft    
-    segment.air_speed      = 100.0 * Units.knots
-    aux_1 = np.arctan(1/18) 
-    segment.climb_rate =  segment.air_speed*np.sin(aux_1) 
-    print('fourth climb segment',segment.climb_rate)
 
 
     # add to misison
@@ -467,14 +436,14 @@ def mission_setup(analyses,vehicle):
 
     segment.analyses.extend( analyses )
 
-    segment.altitude   = 13000. * Units.ft 
-    segment.air_speed  = 110 *Units.knot    
-    segment.distance   = 800 * Units.km	
+    segment.altitude   = 8000. * Units.ft 
+    segment.air_speed  = 130 *Units.knot    
+    segment.distance   = 1500 * Units.km	
     segment.rpm = 2400 * Units.rpm
     
     ones_row                                        = segment.state.ones_row   
     segment.state.numerics.number_control_points    = 16
-    segment.state.unknowns.throttle                 = 1.0 * ones_row(1) 
+    segment.state.unknowns.throttle                 = 1 * ones_row(1) 
 
 
     segment.process.iterate.conditions.stability    = SUAVE.Methods.skip
@@ -496,11 +465,10 @@ def mission_setup(analyses,vehicle):
     # segment attributes
     segment.atmosphere   = atmosphere
     segment.planet       = planet
-    segment.altitude_start = 13000.0 * Units.ft
+    segment.altitude_start = 8000.0 * Units.ft
     segment.altitude_end = 4000.  * Units.ft
     segment.air_speed    = 100.0 * Units.knots
-    aux_1 = np.arctan(1/15) 
-    segment.descent_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.descent_rate =  4.0 *Units.knots
 
     
     # add to mission
@@ -521,10 +489,9 @@ def mission_setup(analyses,vehicle):
     segment.atmosphere   = atmosphere
     segment.planet       = planet
     segment.altitude_start = 4000.0 * Units.ft
-    segment.altitude_end = 100.  * Units.ft
+    segment.altitude_end = 1000.  * Units.ft
     segment.air_speed    = 90.0 * Units.knots
-    aux_1 = np.arctan(1/9) 
-    segment.descent_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.descent_rate =  5.0 *Units.knots
 
     # add to mission
     mission.append_segment(segment)
@@ -543,11 +510,10 @@ def mission_setup(analyses,vehicle):
     # segment attributes
     segment.atmosphere   = atmosphere
     segment.planet       = planet
-    segment.altitude_start = 100.0 * Units.ft
+    segment.altitude_start = 1000.0 * Units.ft
     segment.altitude_end = 0.  * Units.ft
     segment.air_speed    = 80.0 * Units.knots
-    aux_1 = np.arctan(1/9) 
-    segment.descent_rate =  segment.air_speed*np.sin(aux_1) 
+    segment.descent_rate =  5.2 *Units.knots
 
     # add to mission
     mission.append_segment(segment)
