@@ -126,7 +126,6 @@ def plot_sensitivity(vehicle, analyses, n_samples=200):
     valid = np.array(valid)
     vals = np.array(vals)
 
-    # extrai histórico do otimizador
     hist_x = np.array([h[0] for h in history])
     hist_R = np.array([h[1] for h in history])
 
