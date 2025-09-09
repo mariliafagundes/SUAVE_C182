@@ -44,8 +44,8 @@ def vehicle_setup():
     #   Vehicle-level Properties
     # ------------------------------------------------------------------    
 
-    Fuel_masss  = 282.    * Units.kg
-    Payload     = 256.    * Units.kg
+    Fuel_masss  = 251.    * Units.kg
+    Payload     = 287.    * Units.kg
     Empty_original = 873 * Units.kg
     GTOW        =    Fuel_masss +  Payload + Empty_original 
     # GTOW        =    1411                   
@@ -80,7 +80,9 @@ def vehicle_setup():
     wing.chords.root                            = 66. * Units.inches
     wing.chords.tip                             = 45. * Units.inches
     wing.taper                                  = wing.chords.tip/wing.chords.root
+    print('taper', wing.taper)
     wing.aspect_ratio                           = wing.spans.projected**2. / wing.areas.reference
+    print('AR', wing.aspect_ratio)
     wing.twists.root                            = 0.0 * Units.degrees
     wing.twists.tip                             = 0.0 * Units.degrees
     wing.origin                                 = [[80.* Units.inches,0,36.75* Units.inches]]
@@ -88,41 +90,6 @@ def vehicle_setup():
     wing.symmetric                              = True
     wing.high_lift                              = False
     wing.dynamic_pressure_ratio                 = 1.0 
-
-    # # Wing Segments
-    # segment                               = SUAVE.Components.Wings.Segment()
-    # segment.tag                           = 'Root'
-    # segment.percent_span_location         = 0.0
-    # segment.twist                         = 3. * Units.deg
-    # segment.root_chord_percent            = 1.
-    # segment.thickness_to_chord            = 0.12
-    # segment.dihedral_outboard             = 2.5 * Units.degrees
-    # segment.sweeps.quarter_chord          = 0
-    # wing.append_segment(segment)
-
-    # segment                               = SUAVE.Components.Wings.Segment()
-    # segment.tag                           = 'Break'
-    # segment.percent_span_location         = 0.531177829
-    # segment.twist                         = 2. * Units.deg
-    # segment.root_chord_percent            = 1.0
-    # segment.thickness_to_chord            = 0.12
-    # segment.dihedral_outboard             = 5 * Units.degrees
-    # segment.sweeps.quarter_chord          = -3. * Units.degrees
-    # wing.append_segment(segment)
-
-    # segment                               = SUAVE.Components.Wings.Segment()
-    # segment.tag                           = 'Tip'
-    # segment.percent_span_location         = 1.
-    # segment.twist                         = 1. * Units.degrees
-    # segment.root_chord_percent            = 0.67
-    # segment.thickness_to_chord            = 0.12
-    # segment.dihedral_outboard             = 0.
-    # segment.sweeps.quarter_chord          = 0.
-    # wing.append_segment(segment)
-
-    # wing = wing_segmented_planform(wing)
-
-
       
     wing = SUAVE.Methods.Geometry.Two_Dimensional.Planform.wing_planform(wing) 
 
@@ -283,7 +250,7 @@ def vehicle_setup():
     net.engine_length                           = 0.01 * Units.inches
     net.areas                                   = Data()
     net.rated_speed                             = 2400. * Units.rpm
-    net.rated_power                             = 230.  * Units.hp
+    net.rated_power                             = 172.  * Units.hp
     net.areas.wetted                            = 0.01
     # net = propeller_design(net)
     
@@ -311,7 +278,7 @@ def vehicle_setup():
     net.engine.sea_level_power                  = 230. * Units.horsepower   
     net.engine.flat_rate_altitude               = 0.0
     net.engine.speed                            = 2400. * Units.rpm       
-    net.engine.power_specific_fuel_consumption  = 0.65 #lb/h-hp (inside Internal Combustion Engine, it will be converted)
+    net.engine.power_specific_fuel_consumption  = 0.622 #lb/h-hp (inside Internal Combustion Engine, it will be converted)
     
     
     # add the network to the vehicle
@@ -371,7 +338,9 @@ def mission_setup(analyses,vehicle):
     segment.altitude_end   = 800.0 * Units.ft
     segment.air_speed      = 70.0 * Units.knots
     segment.climb_rate = 6.0 *Units.knots
-    print('first climb segment',segment.climb_rate)
+    delta_h = segment.altitude_end - segment.altitude_start
+    distance_1 = 1/3281 * (segment.air_speed * (delta_h/segment.climb_rate)) *Units.km
+    #print(distance_1)
 
     # add to misison
     mission.append_segment(segment)
@@ -395,7 +364,8 @@ def mission_setup(analyses,vehicle):
     segment.altitude_end   = 3000. * Units.ft
     segment.air_speed      = 80.0 * Units.knots
     segment.climb_rate = 5.5 *Units.knots
-    print('second climb segment',segment.climb_rate)
+    distance_2 = 1/3281 * (segment.air_speed * (delta_h/segment.climb_rate)) *Units.km
+    #print(distance_2)
 
 
     # add to misison
@@ -417,10 +387,11 @@ def mission_setup(analyses,vehicle):
 
     segment.throttle       = 1.0
     segment.altitude_start = 3000.0 * Units.ft
-    segment.altitude_end   = 8000.0 * Units.ft    
+    segment.altitude_end   = 10000.0 * Units.ft    
     segment.air_speed      = 100.0 * Units.knots
     segment.climb_rate = 4.0 *Units.knots
-    print('third climb segment',segment.climb_rate)
+    distance_3 = 1/3281 * (segment.air_speed * (delta_h/segment.climb_rate)) *Units.km
+    #print(distance_3)
     #segment.climb_rate =  9.0 * Units.knots
 
 
@@ -436,10 +407,11 @@ def mission_setup(analyses,vehicle):
 
     segment.analyses.extend( analyses )
 
-    segment.altitude   = 8000. * Units.ft 
-    segment.air_speed  = 130 *Units.knot    
-    segment.distance   = 1500 * Units.km	
+    segment.altitude   = 10000. * Units.ft 
+    segment.air_speed  = 130 *Units.knot   
+    segment.distance   = 1366 * Units.km	
     segment.rpm = 2400 * Units.rpm
+    distance_7 = segment.distance
     
     ones_row                                        = segment.state.ones_row   
     segment.state.numerics.number_control_points    = 16
@@ -465,10 +437,12 @@ def mission_setup(analyses,vehicle):
     # segment attributes
     segment.atmosphere   = atmosphere
     segment.planet       = planet
-    segment.altitude_start = 8000.0 * Units.ft
+    segment.altitude_start = 10000.0 * Units.ft
     segment.altitude_end = 4000.  * Units.ft
     segment.air_speed    = 100.0 * Units.knots
     segment.descent_rate =  4.0 *Units.knots
+    distance_4 = 1/3281 * (segment.air_speed * (delta_h/segment.descent_rate)) *Units.km
+    #print(distance_4)
 
     
     # add to mission
@@ -492,6 +466,8 @@ def mission_setup(analyses,vehicle):
     segment.altitude_end = 1000.  * Units.ft
     segment.air_speed    = 90.0 * Units.knots
     segment.descent_rate =  5.0 *Units.knots
+    distance_5 = 1/3281 * (segment.air_speed * (delta_h/segment.descent_rate)) *Units.km
+    #print(distance_5)
 
     # add to mission
     mission.append_segment(segment)
@@ -514,10 +490,14 @@ def mission_setup(analyses,vehicle):
     segment.altitude_end = 0.  * Units.ft
     segment.air_speed    = 80.0 * Units.knots
     segment.descent_rate =  5.2 *Units.knots
+    distance_6 = 1/3281 * (segment.air_speed * (delta_h/segment.descent_rate)) *Units.km
+    #print(distance_6)
 
     # add to mission
     mission.append_segment(segment)
 
+    range = distance_1 + distance_2 + distance_3 + distance_4 + distance_5 + distance_6 + distance_7
+    print(range)
 
     return mission
 
@@ -597,33 +577,81 @@ def base_analysis(vehicle):
 def plot_mission(results,line_style='bo-'):
     
     # Plot Flight Conditions 
-    plot_flight_conditions(results, line_style)
+    #plot_flight_conditions(results, line_style)
+
+    # Plot Fuel Use
+    #plot_fuel_use(results, line_style)
     
     # Plot Aerodynamic Forces 
-    plot_aerodynamic_forces(results, line_style)
+    #plot_aerodynamic_forces(results, line_style)
     
     # Plot Aerodynamic Coefficients 
-    plot_aerodynamic_coefficients(results, line_style)
+    #plot_aerodynamic_coefficients(results, line_style)
     
     # Drag Components
-    plot_drag_components(results, line_style)
+    #plot_drag_components(results, line_style)
     
     # Plot Altitude, sfc, vehicle weight 
     plot_altitude_sfc_weight(results, line_style)
     
     # Plot Velocities 
-    plot_aircraft_velocities(results, line_style)  
+    #plot_aircraft_velocities(results, line_style)  
 
     return
 
+def breguet(vehicle):
+    eta_p = 0.8
+    SFC = 0.622  # lb/hp-hr
+    SFC_SI = (SFC * 0.453592 * 9.81) / (745.7 * 3600)
+    analyses = base_analysis(vehicle)
+    analyses.finalize()
+    mission = mission_setup(analyses, vehicle)
+    results = mission.evaluate()
 
+    
+    wing = vehicle.wings['main_wing']
+    AR = wing.aspect_ratio
+    S = vehicle.reference_area
+    taper = wing.taper
+    tc = wing.thickness_to_chord
+    span = np.sqrt(S * AR)
+    chord_root = (2 * S) / (span * (1 + taper))
+    chord_tip = taper * chord_root
+    wing.spans.projected = span
+    wing.chords.root = chord_root
+    wing.chords.tip = chord_tip
+
+    W0_guess = 2831
+    q = 1360.82
+    S_ft2 = S / Units.feet**2
+    Nz = vehicle.envelope.limit_load
+    tc_percent = tc * 100
+    W_wing = 0.036 * (S_ft2**0.758) * (AR**0.6) * (q**0.006) * (taper**0.04) * (tc_percent**-0.3) * ((Nz * W0_guess)**0.49)
+    W0 = W0_guess + W_wing
+    W2 = W0 * 0.97 * 0.985
+    W3 = W2 - 553.36
+    W2_kg = W2 * 0.453592
+    W3_kg = W3 * 0.453592
+
+    cruise = results.segments['cruise']
+    L = -cruise.conditions.frames.wind.lift_force_vector[:, 2]
+    D = -cruise.conditions.frames.wind.drag_force_vector[:, 0]
+    L_D = np.mean(L / D)
+    R_breguet = eta_p * L_D / SFC_SI * np.log(W2_kg / W3_kg) / 1000
+    print(R_breguet, "R_breguet")
 
 # ----------------------------------------------------------------------        
 #   Call Main
 # ----------------------------------------------------------------------    
 
 if __name__ == '__main__':
-    
     main()
+    vehicle = vehicle_setup()
+    analyses = base_analysis(vehicle)
+    analyses.finalize()
+    mission  = mission_setup(analyses, vehicle)
+    results = mission.evaluate()
+    plot_mission(results)
+    breguet(vehicle)
     plt.show()
 
